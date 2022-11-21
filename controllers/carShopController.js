@@ -22,21 +22,22 @@ module.exports = {
 
     add(req, res) {
         //recibimos id y cantidad del producto
-        let id = req.body.id;
+        let id_p = req.body.id_product;
+        let id_cli = req.body.id_cliente;
         let cantidad = req.body.cantidad;
         //buscamos el producto por id
         productos
-            .findById(id)
+            .findById(id_p)
             // Si el id esta entonces
-            .then((daticos => {
+            .then((daticos_prod => {
                 carShop
                 // Verificamos si el mismo producto ya lo tenemos en el carrito
-                .findOne({ id_product: id })
+                .findOne({ id_product: id_p, id_cliente: id_cli })
                 // Si lo tenemos entonces sumamos cantidad
                 .then((car) => {
                     let suma = parseInt(car.cantidad) + parseInt(cantidad);
                     carShop
-                    .updateOne({ id_product: id }, {
+                    .updateOne({ id_product: id_p, id_cliente: id_cli }, {
                         $set: {cantidad: suma}
                     })
                     .then(() => {
@@ -48,11 +49,12 @@ module.exports = {
                 // Si el producto no esta en el carrito entonces lo agregamos
                 .catch(() => {
                     carShop.create({
-                        id_product: daticos._id,
-                        imagen: daticos.imagen,
-                        nombre: daticos.nombre,
-                        precio: daticos.precio,
-                        descripcion: daticos.descripcion,
+                        id_product: daticos_prod._id,
+                        id_cliente: id_cli,
+                        imagen: daticos_prod.imagen,
+                        nombre: daticos_prod.nombre,
+                        precio: daticos_prod.precio,
+                        descripcion: daticos_prod.descripcion,
                         cantidad: cantidad
                     })
                     res.status(200).send('Se agrego el producto')
@@ -63,7 +65,8 @@ module.exports = {
     },
 
     confirm(req, res) {
-        carShop.find()
+        //buscamos al cliente del carrito
+        carShop.find({ id_cliente: req.params.id })
         .then((car) => {
             car.forEach(element => {
                 //consultamos stock
@@ -72,10 +75,11 @@ module.exports = {
                     let stock = prod.stock;
                     //verificamos si hay stock suficiente
                     if (element.cantidad > stock) {
-                        res.status(400).send('No hay suficiente stock de ' + element.nombre)
+                        res.status(400).send('No hay suficiente stock de ' + element.nombre);
                     } else {
                         ventas.create({
                             id_product: element.id_product,
+                            id_cliente: element.id_cliente,
                             imagen: element.imagen,
                             nombre: element.nombre,
                             precio: element.precio,
@@ -87,18 +91,20 @@ module.exports = {
                         productos.updateOne({ _id: element.id_product }, {
                             $inc: {stock: -element.cantidad}
                         })
-                        .then(() => console.log('Se actualizo el stock del producto ' + element.nombre))
-                        .catch((error) => console.log('No se pudo actualizar el stock del producto ' + element.nombre + ' ' + error))
-                        // Borra carrito
-                        carShop.deleteOne({ id_product: element.id_product })
-                        .then(() => console.log('Registro eliminado del carrito'))
-                        .catch((error) => res.status(400).send(error))
-
-                        res.status(200).send('Compra realizada')
+                        .then(() => {
+                            console.log('Se actualizo el stock del producto ' + element.nombre);
+                            // Borra carrito
+                            carShop.deleteOne({ id_product: element.id_product, id_cliente: element.id_cliente })
+                            .then(() => console.log('Registro eliminado del carrito'))
+                            .catch((error) => res.status(400).send(error));
+                        })
+                        .catch((error) => console.log('No se pudo actualizar el stock del producto ' + element.nombre + ' ' + error));
+                        console.log('Compra realizada');
                     }
-                }).catch((error) => res.status(400).send(error))
+                }).catch((error) => res.status(400).send(error));
             })
-        }).catch(() => res.send('El carrito esta vacio'))
+            res.status(200).send('Transacción Exitosa!!!');
+        }).catch(() => res.send('El carrito esta vacio'));
     },
     
     delete(req, res) {

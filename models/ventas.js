@@ -1,9 +1,15 @@
 const mongoose = require("mongoose");
+var Schema = mongoose.Schema;
 const ventaSchema = mongoose.Schema({
  
   id_product: {
     type: String,
     require: true,
+  },
+
+  id_cliente: {
+    type: Schema.ObjectId,
+    ref: "clientes"
   },
 
   imagen: {
